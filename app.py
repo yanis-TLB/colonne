@@ -37,9 +37,17 @@ with st.sidebar:
             st.rerun()
 
 if st.session_state.authenticated:
-    menu = st.sidebar.radio("Navigation", ["📋 Gestion des Colonnes", "🔬 Enregistrer Analyse"])
+    menu = st.sidebar.radio("Navigation", ["📊 Dashboard", "📋 Gestion des Colonnes", "🔬 Enregistrer Analyse", "🔍 Recherche"])
     
-    if menu == "📋 Gestion des Colonnes":
+    if menu == "📊 Dashboard":
+        st.header("📊 Dashboard")
+        try:
+            colonnes = supabase.table("colonnes").select("*").execute().data
+            st.metric("🔬 Colonnes", len(colonnes))
+        except:
+            st.info("Ajoutez des colonnes")
+    
+    elif menu == "📋 Gestion des Colonnes":
         st.header("➕ Ajouter une colonne")
         with st.form("add_form"):
             col1, col2 = st.columns(2)
@@ -83,7 +91,7 @@ if st.session_state.authenticated:
         if colonnes:
             options = {f"{c['code_colonne']} - {c['marque']}": c['id'] for c in colonnes}
             selection = st.selectbox("Colonne utilisée", list(options.keys()))
-            type_ana = st.selectbox("Type d'analyse", ["Dissolution", "Uniformité de Teneur", "Dosage"])
+            type_ana = st.selectbox("Type d'analyse", ["Dissolution", "Uniformité"])
             resultat = st.selectbox("Résultat", ["OK", "Hors spé"])
             chimiste = st.text_input("Chimiste")
             if st.button("Enregistrer"):
@@ -91,5 +99,10 @@ if st.session_state.authenticated:
                 st.balloons()
         else:
             st.warning("Ajoutez d'abord des colonnes")
+    
+    elif menu == "🔍 Recherche":
+        from pages.recherche import show_recherche
+        show_recherche(supabase)
+
 else:
     st.info("👈 Connectez-vous pour accéder à l'application")
