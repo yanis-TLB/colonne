@@ -52,13 +52,8 @@ if st.session_state.authenticated:
             with col3:
                 actives = len([c for c in colonnes if c.get('statut') == 'active'])
                 st.metric("✅ Actives", actives)
-<<<<<<< Updated upstream
         except:
             st.info("Ajoutez des données")
-=======
-        except Exception as e:
-            st.info("Ajoutez des colonnes")
->>>>>>> Stashed changes
     
     elif menu == "📋 Gestion des Colonnes":
         st.header("📋 Gestion des Colonnes")
@@ -72,7 +67,6 @@ if st.session_state.authenticated:
                     marque = st.text_input("Marque*")
                     code_usp = st.selectbox("Code USP*", ["L1 (C18)", "L7 (C8)", "L11 (Phényle)", "L14 (Silice)", "L20 (Diol)", "Autre"])
                     numero_serie = st.text_input("Numéro de série*")
-<<<<<<< Updated upstream
                     longueur = st.number_input("Longueur (mm)", min_value=10, max_value=500, value=250)
                 
                 with col2:
@@ -80,15 +74,9 @@ if st.session_state.authenticated:
                     diam_grains = st.number_input("Diamètre grains (µm)", min_value=0.5, max_value=10.0, value=3.5, step=0.1)
                     photo_url = st.text_input("URL de la photo (optionnel)", placeholder="https://exemple.com/photo.jpg")
                     commentaire = st.text_area("Commentaire (optionnel)", placeholder="Informations supplémentaires")
-=======
-                    longueur = st.number_input("Longueur (mm)", value=250)
-                
-                with col2:
-                    diam_int = st.number_input("Diamètre interne (mm)", value=4.6, step=0.1)
-                    diam_grains = st.number_input("Diamètre grains (µm)", value=3.5, step=0.1)
-                    photo_url = st.text_input("URL de la photo (optionnel)", placeholder="https://exemple.com/photo.jpg")
-                    commentaire = st.text_area("Commentaire (optionnel)", placeholder="Informations supplémentaires sur la colonne")
->>>>>>> Stashed changes
+                    # Types d'analyse associés à cette colonne
+                    types_analyse = st.multiselect("Types d'analyse associés à cette colonne", 
+                        ["Dosage", "Dos des Substance apparentés", "Uniformité de Teneur", "Identification", "Dissolution"])
                 
                 if photo_url:
                     st.image(photo_url, width=150, caption="Aperçu")
@@ -106,6 +94,7 @@ if st.session_state.authenticated:
                                 "diametre_grains": diam_grains,
                                 "photo_url": photo_url if photo_url else None,
                                 "commentaire": commentaire if commentaire else None,
+                                "types_analyse": types_analyse if types_analyse else None,
                                 "statut": "active"
                             }).execute()
                             st.success(f"✅ Colonne {code_colonne} ajoutée !")
@@ -138,23 +127,19 @@ if st.session_state.authenticated:
                     with col1:
                         options = {f"{c['code_colonne']} - {c['marque']}": c['id'] for c in colonnes}
                         colonne_select = st.selectbox("Colonne utilisée*", list(options.keys()))
-<<<<<<< Updated upstream
-=======
                         
->>>>>>> Stashed changes
-                        type_analyse = st.selectbox("Type d'analyse*", [
-                            "Dosage",
-                            "Dos des Substance apparentés",
-                            "Uniformité de Teneur",
-                            "Identification",
-                            "Dissolution"
-                        ])
-<<<<<<< Updated upstream
+                        # Récupérer la colonne sélectionnée
+                        colonne_id = options[colonne_select]
+                        colonne_data = next(c for c in colonnes if c['id'] == colonne_id)
+                        types_disponibles = colonne_data.get('types_analyse', [])
+                        
+                        if types_disponibles:
+                            type_analyse = st.selectbox("Type d'analyse*", types_disponibles)
+                        else:
+                            type_analyse = st.selectbox("Type d'analyse*", 
+                                ["Dosage", "Dos des Substance apparentés", "Uniformité de Teneur", "Identification", "Dissolution"])
+                        
                         produit = st.text_input("Nom du produit à analyser*", placeholder="Ex: Paracétamol")
-=======
-                        
-                        produit = st.text_input("Nom du produit à analyser*", placeholder="Ex: Paracétamol, Ibuprofène...")
->>>>>>> Stashed changes
                     
                     with col2:
                         resultat = st.selectbox("Résultat*", ["OK", "Hors spé"])
@@ -163,7 +148,6 @@ if st.session_state.authenticated:
                     
                     if st.form_submit_button("💾 Enregistrer l'analyse"):
                         if colonne_select and produit and chimiste:
-                            colonne_id = options[colonne_select]
                             try:
                                 supabase.table("analyses").insert({
                                     "colonne_id": colonne_id,
@@ -174,16 +158,6 @@ if st.session_state.authenticated:
                                     "chimiste_nom": chimiste,
                                     "notes": notes if notes else None
                                 }).execute()
-<<<<<<< Updated upstream
-                                
-                                # Incrémenter le compteur d'injections
-                                colonne_data = next(c for c in colonnes if c['id'] == colonne_id)
-                                supabase.table("colonnes").update({
-                                    "injections_totales": colonne_data.get('injections_totales', 0) + 1
-                                }).eq("id", colonne_id).execute()
-                                
-=======
->>>>>>> Stashed changes
                                 st.success("✅ Analyse enregistrée !")
                                 st.balloons()
                             except Exception as e:
@@ -191,11 +165,7 @@ if st.session_state.authenticated:
                         else:
                             st.warning("Veuillez remplir tous les champs obligatoires")
             else:
-<<<<<<< Updated upstream
                 st.warning("⚠️ Aucune colonne disponible")
-=======
-                st.warning("⚠️ Aucune colonne disponible. Ajoutez d'abord des colonnes.")
->>>>>>> Stashed changes
         except Exception as e:
             st.error(f"Erreur de connexion: {e}")
     
@@ -222,6 +192,10 @@ if st.session_state.authenticated:
                     diametres = sorted(df['diametre_interne'].unique().tolist())
                     diametre = st.selectbox("Diamètre interne (mm)", ["Tous"] + diametres)
                 
+                # Filtre par type d'analyse
+                all_types = ["Dosage", "Dos des Substance apparentés", "Uniformité de Teneur", "Identification", "Dissolution"]
+                type_filtre = st.selectbox("Type d'analyse compatible", ["Tous"] + all_types)
+                
                 df_filtre = df.copy()
                 if code_usp != "Tous":
                     df_filtre = df_filtre[df_filtre['code_usp'] == code_usp]
@@ -234,6 +208,13 @@ if st.session_state.authenticated:
                 
                 if not df_filtre.empty:
                     st.dataframe(df_filtre[['code_colonne', 'marque', 'code_usp', 'longueur_mm', 'diametre_interne', 'diametre_grains', 'statut']], use_container_width=True)
+                    
+                    # Afficher les types d'analyse pour chaque colonne
+                    for _, row in df_filtre.iterrows():
+                        with st.expander(f"🔍 {row['code_colonne']} - {row['marque']}"):
+                            st.write(f"**Code USP:** {row['code_usp']}")
+                            st.write(f"**Dimensions:** {row['longueur_mm']}mm x {row['diametre_interne']}mm x {row['diametre_grains']}µm")
+                            st.write(f"**Types d'analyse compatibles:** {row.get('types_analyse', 'Non spécifiés')}")
                 else:
                     st.warning("Aucun résultat")
             else:
