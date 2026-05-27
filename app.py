@@ -6,6 +6,10 @@ import pandas as pd
 from datetime import date
 
 load_dotenv()
+url = os.getenv("SUPABASE_URL")
+key = os.getenv("SUPABASE_KEY")
+st.write(f"URL: {repr(url)}")
+st.write(f"KEY: {repr(key[:20]) if key else None}") 
 
 st.set_page_config(page_title="Labo Q - Gestion Colonnes HPLC", page_icon="🧪", layout="wide")
 
