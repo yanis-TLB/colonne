@@ -52,8 +52,13 @@ if st.session_state.authenticated:
             with col3:
                 actives = len([c for c in colonnes if c.get('statut') == 'active'])
                 st.metric("✅ Actives", actives)
+<<<<<<< Updated upstream
         except:
             st.info("Ajoutez des données")
+=======
+        except Exception as e:
+            st.info("Ajoutez des colonnes")
+>>>>>>> Stashed changes
     
     elif menu == "📋 Gestion des Colonnes":
         st.header("📋 Gestion des Colonnes")
@@ -67,6 +72,7 @@ if st.session_state.authenticated:
                     marque = st.text_input("Marque*")
                     code_usp = st.selectbox("Code USP*", ["L1 (C18)", "L7 (C8)", "L11 (Phényle)", "L14 (Silice)", "L20 (Diol)", "Autre"])
                     numero_serie = st.text_input("Numéro de série*")
+<<<<<<< Updated upstream
                     longueur = st.number_input("Longueur (mm)", min_value=10, max_value=500, value=250)
                 
                 with col2:
@@ -74,6 +80,15 @@ if st.session_state.authenticated:
                     diam_grains = st.number_input("Diamètre grains (µm)", min_value=0.5, max_value=10.0, value=3.5, step=0.1)
                     photo_url = st.text_input("URL de la photo (optionnel)", placeholder="https://exemple.com/photo.jpg")
                     commentaire = st.text_area("Commentaire (optionnel)", placeholder="Informations supplémentaires")
+=======
+                    longueur = st.number_input("Longueur (mm)", value=250)
+                
+                with col2:
+                    diam_int = st.number_input("Diamètre interne (mm)", value=4.6, step=0.1)
+                    diam_grains = st.number_input("Diamètre grains (µm)", value=3.5, step=0.1)
+                    photo_url = st.text_input("URL de la photo (optionnel)", placeholder="https://exemple.com/photo.jpg")
+                    commentaire = st.text_area("Commentaire (optionnel)", placeholder="Informations supplémentaires sur la colonne")
+>>>>>>> Stashed changes
                 
                 if photo_url:
                     st.image(photo_url, width=150, caption="Aperçu")
@@ -123,6 +138,10 @@ if st.session_state.authenticated:
                     with col1:
                         options = {f"{c['code_colonne']} - {c['marque']}": c['id'] for c in colonnes}
                         colonne_select = st.selectbox("Colonne utilisée*", list(options.keys()))
+<<<<<<< Updated upstream
+=======
+                        
+>>>>>>> Stashed changes
                         type_analyse = st.selectbox("Type d'analyse*", [
                             "Dosage",
                             "Dos des Substance apparentés",
@@ -130,7 +149,12 @@ if st.session_state.authenticated:
                             "Identification",
                             "Dissolution"
                         ])
+<<<<<<< Updated upstream
                         produit = st.text_input("Nom du produit à analyser*", placeholder="Ex: Paracétamol")
+=======
+                        
+                        produit = st.text_input("Nom du produit à analyser*", placeholder="Ex: Paracétamol, Ibuprofène...")
+>>>>>>> Stashed changes
                     
                     with col2:
                         resultat = st.selectbox("Résultat*", ["OK", "Hors spé"])
@@ -150,6 +174,7 @@ if st.session_state.authenticated:
                                     "chimiste_nom": chimiste,
                                     "notes": notes if notes else None
                                 }).execute()
+<<<<<<< Updated upstream
                                 
                                 # Incrémenter le compteur d'injections
                                 colonne_data = next(c for c in colonnes if c['id'] == colonne_id)
@@ -157,6 +182,8 @@ if st.session_state.authenticated:
                                     "injections_totales": colonne_data.get('injections_totales', 0) + 1
                                 }).eq("id", colonne_id).execute()
                                 
+=======
+>>>>>>> Stashed changes
                                 st.success("✅ Analyse enregistrée !")
                                 st.balloons()
                             except Exception as e:
@@ -164,7 +191,11 @@ if st.session_state.authenticated:
                         else:
                             st.warning("Veuillez remplir tous les champs obligatoires")
             else:
+<<<<<<< Updated upstream
                 st.warning("⚠️ Aucune colonne disponible")
+=======
+                st.warning("⚠️ Aucune colonne disponible. Ajoutez d'abord des colonnes.")
+>>>>>>> Stashed changes
         except Exception as e:
             st.error(f"Erreur de connexion: {e}")
     
