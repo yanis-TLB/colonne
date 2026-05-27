@@ -43,66 +43,172 @@ if st.session_state.authenticated:
         st.header("📊 Dashboard")
         try:
             colonnes = supabase.table("colonnes").select("*").execute().data
-            st.metric("🔬 Colonnes", len(colonnes))
+            analyses = supabase.table("analyses").select("*").execute().data
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.metric("🔬 Colonnes", len(colonnes))
+            with col2:
+                st.metric("📊 Analyses", len(analyses))
+            with col3:
+                actives = len([c for c in colonnes if c.get('statut') == 'active'])
+                st.metric("✅ Actives", actives)
         except:
-            st.info("Ajoutez des colonnes")
+            st.info("Ajoutez des données")
     
     elif menu == "📋 Gestion des Colonnes":
-        st.header("➕ Ajouter une colonne")
-        with st.form("add_form"):
-            col1, col2 = st.columns(2)
-            with col1:
-                code = st.text_input("Code Colonne")
-                marque = st.text_input("Marque")
-                usp = st.text_input("Code USP")
-            with col2:
-                serie = st.text_input("N° série")
-                longueur = st.number_input("Longueur (mm)", value=250)
-                diam_int = st.number_input("Diamètre interne (mm)", value=4.6)
-            
-            if st.form_submit_button("💾 Enregistrer"):
-                if code and marque:
-                    try:
-                        supabase.table("colonnes").insert({
-                            "code_colonne": code,
-                            "marque": marque,
-                            "code_usp": usp,
-                            "numero_serie": serie,
-                            "longueur_mm": longueur,
-                            "diametre_interne": diam_int
-                        }).execute()
-                        st.success(f"✅ Colonne {code} ajoutée !")
-                        st.rerun()
-                    except Exception as e:
-                        st.error(f"Erreur: {e}")
-                else:
-                    st.warning("Code et marque obligatoires")
+        st.header("📋 Gestion des Colonnes")
+        
+        with st.expander("➕ Ajouter une colonne", expanded=True):
+            with st.form("add_form"):
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    code_colonne = st.text_input("Code Colonne*")
+                    marque = st.text_input("Marque*")
+                    code_usp = st.selectbox("Code USP*", ["L1 (C18)", "L7 (C8)", "L11 (Phényle)", "L14 (Silice)", "L20 (Diol)", "Autre"])
+                    numero_serie = st.text_input("Numéro de série*")
+                    longueur = st.number_input("Longueur (mm)", min_value=10, max_value=500, value=250)
+                
+                with col2:
+                    diam_int = st.number_input("Diamètre interne (mm)", min_value=1.0, max_value=50.0, value=4.6, step=0.1)
+                    diam_grains = st.number_input("Diamètre grains (µm)", min_value=0.5, max_value=10.0, value=3.5, step=0.1)
+                    photo_url = st.text_input("URL de la photo (optionnel)", placeholder="https://exemple.com/photo.jpg")
+                    commentaire = st.text_area("Commentaire (optionnel)", placeholder="Informations supplémentaires")
+                
+                if photo_url:
+                    st.image(photo_url, width=150, caption="Aperçu")
+                
+                if st.form_submit_button("💾 Enregistrer"):
+                    if code_colonne and marque and numero_serie:
+                        try:
+                            supabase.table("colonnes").insert({
+                                "code_colonne": code_colonne,
+                                "marque": marque,
+                                "code_usp": code_usp,
+                                "numero_serie": numero_serie,
+                                "longueur_mm": longueur,
+                                "diametre_interne": diam_int,
+                                "diametre_grains": diam_grains,
+                                "photo_url": photo_url if photo_url else None,
+                                "commentaire": commentaire if commentaire else None,
+                                "statut": "active"
+                            }).execute()
+                            st.success(f"✅ Colonne {code_colonne} ajoutée !")
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"Erreur: {e}")
+                    else:
+                        st.warning("Les champs Code Colonne, Marque et N° série sont obligatoires")
         
         st.subheader("📊 Liste des colonnes")
-        data = supabase.table("colonnes").select("*").execute().data
-        if data:
-            st.dataframe(pd.DataFrame(data))
-        else:
-            st.info("Aucune colonne")
+        try:
+            data = supabase.table("colonnes").select("*").execute().data
+            if data:
+                df = pd.DataFrame(data)
+                st.dataframe(df[['code_colonne', 'marque', 'code_usp', 'numero_serie', 'longueur_mm', 'diametre_interne', 'statut']], use_container_width=True)
+            else:
+                st.info("Aucune colonne")
+        except Exception as e:
+            st.error(f"Erreur de connexion: {e}")
     
     elif menu == "🔬 Enregistrer Analyse":
         st.header("🔬 Enregistrer une analyse")
-        colonnes = supabase.table("colonnes").select("*").execute().data
-        if colonnes:
-            options = {f"{c['code_colonne']} - {c['marque']}": c['id'] for c in colonnes}
-            selection = st.selectbox("Colonne utilisée", list(options.keys()))
-            type_ana = st.selectbox("Type d'analyse", ["Dissolution", "Uniformité"])
-            resultat = st.selectbox("Résultat", ["OK", "Hors spé"])
-            chimiste = st.text_input("Chimiste")
-            if st.button("Enregistrer"):
-                st.success("Analyse enregistrée !")
-                st.balloons()
-        else:
-            st.warning("Ajoutez d'abord des colonnes")
+        
+        try:
+            colonnes = supabase.table("colonnes").select("*").execute().data
+            if colonnes:
+                with st.form("ana_form"):
+                    col1, col2 = st.columns(2)
+                    
+                    with col1:
+                        options = {f"{c['code_colonne']} - {c['marque']}": c['id'] for c in colonnes}
+                        colonne_select = st.selectbox("Colonne utilisée*", list(options.keys()))
+                        type_analyse = st.selectbox("Type d'analyse*", [
+                            "Dosage",
+                            "Dos des Substance apparentés",
+                            "Uniformité de Teneur",
+                            "Identification",
+                            "Dissolution"
+                        ])
+                        produit = st.text_input("Nom du produit à analyser*", placeholder="Ex: Paracétamol")
+                    
+                    with col2:
+                        resultat = st.selectbox("Résultat*", ["OK", "Hors spé"])
+                        chimiste = st.text_input("Nom du chimiste*")
+                        notes = st.text_area("Notes / Commentaires (optionnel)")
+                    
+                    if st.form_submit_button("💾 Enregistrer l'analyse"):
+                        if colonne_select and produit and chimiste:
+                            colonne_id = options[colonne_select]
+                            try:
+                                supabase.table("analyses").insert({
+                                    "colonne_id": colonne_id,
+                                    "date_analyse": str(date.today()),
+                                    "type_analyse": type_analyse,
+                                    "produit": produit,
+                                    "resultat_conformite": resultat,
+                                    "chimiste_nom": chimiste,
+                                    "notes": notes if notes else None
+                                }).execute()
+                                
+                                # Incrémenter le compteur d'injections
+                                colonne_data = next(c for c in colonnes if c['id'] == colonne_id)
+                                supabase.table("colonnes").update({
+                                    "injections_totales": colonne_data.get('injections_totales', 0) + 1
+                                }).eq("id", colonne_id).execute()
+                                
+                                st.success("✅ Analyse enregistrée !")
+                                st.balloons()
+                            except Exception as e:
+                                st.error(f"Erreur: {e}")
+                        else:
+                            st.warning("Veuillez remplir tous les champs obligatoires")
+            else:
+                st.warning("⚠️ Aucune colonne disponible")
+        except Exception as e:
+            st.error(f"Erreur de connexion: {e}")
     
     elif menu == "🔍 Recherche":
-        from pages.recherche import show_recherche
-        show_recherche(supabase)
+        st.header("🔍 Recherche de colonnes")
+        
+        try:
+            colonnes = supabase.table("colonnes").select("*").execute().data
+            if colonnes:
+                df = pd.DataFrame(colonnes)
+                
+                st.subheader("📋 Filtres")
+                col1, col2, col3 = st.columns(3)
+                
+                with col1:
+                    usp_options = ["Tous"] + sorted(df['code_usp'].unique().tolist())
+                    code_usp = st.selectbox("Code USP", usp_options)
+                
+                with col2:
+                    longueurs = sorted(df['longueur_mm'].unique().tolist())
+                    longueur = st.selectbox("Longueur (mm)", ["Tous"] + longueurs)
+                
+                with col3:
+                    diametres = sorted(df['diametre_interne'].unique().tolist())
+                    diametre = st.selectbox("Diamètre interne (mm)", ["Tous"] + diametres)
+                
+                df_filtre = df.copy()
+                if code_usp != "Tous":
+                    df_filtre = df_filtre[df_filtre['code_usp'] == code_usp]
+                if longueur != "Tous":
+                    df_filtre = df_filtre[df_filtre['longueur_mm'] == longueur]
+                if diametre != "Tous":
+                    df_filtre = df_filtre[df_filtre['diametre_interne'] == diametre]
+                
+                st.subheader(f"📊 Résultats ({len(df_filtre)} colonne(s))")
+                
+                if not df_filtre.empty:
+                    st.dataframe(df_filtre[['code_colonne', 'marque', 'code_usp', 'longueur_mm', 'diametre_interne', 'diametre_grains', 'statut']], use_container_width=True)
+                else:
+                    st.warning("Aucun résultat")
+            else:
+                st.info("Aucune colonne")
+        except Exception as e:
+            st.error(f"Erreur: {e}")
 
 else:
     st.info("👈 Connectez-vous pour accéder à l'application")
