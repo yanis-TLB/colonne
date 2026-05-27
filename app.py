@@ -67,18 +67,18 @@ if st.session_state.authenticated:
                     marque = st.text_input("Marque*")
                     code_usp = st.selectbox("Code USP*", ["L1 (C18)", "L7 (C8)", "L11 (Phényle)", "L14 (Silice)", "L20 (Diol)", "Autre"])
                     numero_serie = st.text_input("Numéro de série*")
-                    longueur = st.number_input("Longueur (mm)", value=250)
+                    longueur = st.number_input("Longueur (mm)", min_value=10, max_value=500, value=250)
                 
                 with col2:
-                    diam_int = st.number_input("Diamètre interne (mm)", value=4.6, step=0.1)
-                    diam_grains = st.number_input("Diamètre grains (µm)", value=3.5, step=0.1)
-                    photo_url = st.text_input("URL de la photo (optionnel)")
-                    commentaire = st.text_area("Commentaire (optionnel)")
+                    diam_int = st.number_input("Diamètre interne (mm)", min_value=1.0, max_value=50.0, value=4.6, step=0.1)
+                    diam_grains = st.number_input("Diamètre grains (µm)", min_value=0.5, max_value=10.0, value=3.5, step=0.1)
+                    photo_url = st.text_input("URL de la photo (optionnel)", placeholder="https://exemple.com/photo.jpg")
+                    commentaire = st.text_area("Commentaire (optionnel)", placeholder="Informations supplémentaires")
                     types_analyse = st.multiselect("Types d'analyse associés", 
                         ["Dosage", "Dos des Substance apparentés", "Uniformité de Teneur", "Identification", "Dissolution"])
                 
                 if photo_url:
-                    st.image(photo_url, width=150)
+                    st.image(photo_url, width=150, caption="Aperçu")
                 
                 if st.form_submit_button("💾 Enregistrer"):
                     if code_colonne and marque and numero_serie:
@@ -96,12 +96,12 @@ if st.session_state.authenticated:
                                 "types_analyse": types_analyse if types_analyse else None,
                                 "statut": "active"
                             }).execute()
-                            st.success(f"✅ Colonne ajoutée !")
+                            st.success(f"✅ Colonne {code_colonne} ajoutée !")
                             st.rerun()
                         except Exception as e:
                             st.error(f"Erreur: {e}")
                     else:
-                        st.warning("Champs obligatoires manquants")
+                        st.warning("Les champs Code Colonne, Marque et N° série sont obligatoires")
         
         st.subheader("📊 Liste des colonnes")
         try:
