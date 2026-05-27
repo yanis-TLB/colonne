@@ -16,6 +16,7 @@ try:
     r = requests.get(url, timeout=5)
     st.write(f"Connexion OK : {r.status_code}")
 except Exception as e:
+    st.write(f"Connexion échouée : {e}")
 
 st.set_page_config(page_title="Labo Q - Gestion Colonnes HPLC", page_icon="🧪", layout="wide")
 
