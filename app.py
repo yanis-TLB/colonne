@@ -42,48 +42,29 @@ if st.session_state.authenticated:
         st.header("📊 Dashboard")
         try:
             colonnes = supabase.table("colonnes").select("*").execute().data
-            st.metric("🔬 Nombre total de colonnes", len(colonnes))
-            
-            if colonnes:
-                df = pd.DataFrame(colonnes)
-                actives = len(df[df['statut'] == 'active'])
-                st.metric("✅ Colonnes actives", actives)
+            st.metric("🔬 Colonnes", len(colonnes))
         except:
             st.info("Ajoutez des colonnes")
     
     elif menu == "📋 Gestion des Colonnes":
         st.header("📋 Gestion des Colonnes")
         
-        with st.expander("➕ Ajouter une colonne", expanded=True):
+        with st.expander("➕ Ajouter une colonne"):
             with st.form("add_form"):
-                col1, col2 = st.columns(2)
-                with col1:
-                    code_colonne = st.text_input("Code Colonne*")
-                    marque = st.text_input("Marque*")
-                    code_usp = st.selectbox("Code USP*", ["L1 (C18)", "L7 (C8)", "L11 (Phényle)"])
-                    numero_serie = st.text_input("Numéro de série*")
-                with col2:
-                    longueur = st.number_input("Longueur (mm)", value=250)
-                    diam_int = st.number_input("Diamètre interne (mm)", value=4.6)
-                    diam_grains = st.number_input("Diamètre grains (µm)", value=3.5)
-                    commentaire = st.text_area("Commentaire")
-                
+                code = st.text_input("Code Colonne")
+                marque = st.text_input("Marque")
+                usp = st.text_input("Code USP")
+                serie = st.text_input("N° série")
                 if st.form_submit_button("Enregistrer"):
-                    if code_colonne and marque:
+                    if code and marque:
                         try:
                             supabase.table("colonnes").insert({
-                                "code_colonne": code_colonne,
+                                "code_colonne": code,
                                 "marque": marque,
-                                "code_usp": code_usp,
-                                "numero_serie": numero_serie,
-                                "longueur_mm": longueur,
-                                "diametre_interne": diam_int,
-                                "diametre_grains": diam_grains,
-                                "commentaire": commentaire,
-                                "statut": "active"
+                                "code_usp": usp,
+                                "numero_serie": serie
                             }).execute()
                             st.success("Colonne ajoutée !")
-                            st.rerun()
                         except Exception as e:
                             st.error(f"Erreur: {e}")
         
@@ -92,8 +73,11 @@ if st.session_state.authenticated:
             st.dataframe(pd.DataFrame(data))
     
     elif menu == "🔍 Recherche":
-        from pages.recherche import show_recherche
-        show_recherche(supabase)
+        st.header("🔍 Recherche")
+        data = supabase.table("colonnes").select("*").execute().data
+        if data:
+            df = pd.DataFrame(data)
+            st.dataframe(df)
 
 else:
     st.info("Connectez-vous")
