@@ -1,5 +1,5 @@
 streamlit
-supabase>=2.10.0
+supabase==2.15.1
 python-dotenv
 pandas
 plotly
