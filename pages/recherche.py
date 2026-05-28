@@ -5,7 +5,8 @@ def show_recherche(supabase):
     st.header("🔍 Recherche de colonnes HPLC")
 
     try:
-     colonnes = supabase.table("colonnes").select("*")
+        colonnes = supabase.table("colonnes").select("*")
+
         if not colonnes or isinstance(colonnes, dict):
             st.info("Aucune colonne dans la base de données.")
             return
