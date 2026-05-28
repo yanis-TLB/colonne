@@ -126,7 +126,6 @@ if st.session_state.authenticated:
                                 "statut": "active"
                             })
                             st.success(f"✅ Colonne {code_colonne} ajoutée !")
-                            st.rerun()
                         except Exception as e:
                             st.error(f"Erreur: {e}")
                     else:
