@@ -22,12 +22,24 @@ class TableQuery:
     def __init__(self, table_name):
         self.table_name = table_name
 
+    @property
+    def data(self):
+        r = req.get(
+            f"{SUPABASE_URL}/rest/v1/{self.table_name}?select=*",
+            headers=HEADERS
+        )
+        if r.ok:
+            return r.json()
+        return []
+
     def select(self, cols="*"):
         r = req.get(
             f"{SUPABASE_URL}/rest/v1/{self.table_name}?select={cols}",
             headers=HEADERS
         )
-        return type('R', (), {'data': r.json() if r.ok else []})()
+        if r.ok:
+            return r.json()
+        return []
 
     def insert(self, data):
         r = req.post(
@@ -35,7 +47,7 @@ class TableQuery:
             headers=HEADERS,
             json=data
         )
-        return type('R', (), {'data': r.json()})()
+        return r
 
 class SupabaseClient:
     def table(self, table_name):
@@ -54,7 +66,7 @@ with st.sidebar:
         email = st.text_input("Email")
         password = st.text_input("Mot de passe", type="password")
         if st.button("Se connecter"):
-            if email == os.getenv("ADMIN_EMAIL", "admin@labo.com") and password == os.getenv("ADMIN_PASSWORD", "Admin123!"):
+            if email == "admin@labo.com" and password == "Admin123!":
                 st.session_state.authenticated = True
                 st.rerun()
             else:
@@ -71,18 +83,18 @@ if st.session_state.authenticated:
     if menu == "📊 Dashboard":
         st.header("📊 Dashboard")
         try:
-            colonnes = supabase.table("colonnes").select("*").data
-            analyses = supabase.table("analyses").select("*").data
+            colonnes = supabase.table("colonnes").data
+            analyses = supabase.table("analyses").data
             col1, col2, col3 = st.columns(3)
             with col1:
-                st.metric("🔬 Colonnes", len(colonnes))
+                st.metric("🔬 Colonnes", len(colonnes) if isinstance(colonnes, list) else 0)
             with col2:
-                st.metric("📊 Analyses", len(analyses))
+                st.metric("📊 Analyses", len(analyses) if isinstance(analyses, list) else 0)
             with col3:
-                actives = len([c for c in colonnes if c.get('statut') == 'active'])
+                actives = len([c for c in colonnes if isinstance(colonnes, list) and c.get('statut') == 'active'])
                 st.metric("✅ Actives", actives)
-        except:
-            st.info("Ajoutez des données")
+        except Exception as e:
+            st.info(f"Ajoutez des données ({e})")
 
     elif menu == "📋 Gestion des Colonnes":
         st.header("📋 Gestion des Colonnes")
@@ -111,33 +123,33 @@ if st.session_state.authenticated:
 
                 if st.form_submit_button("💾 Enregistrer"):
                     if code_colonne and marque and numero_serie:
-                        try:
-                            supabase.table("colonnes").insert({
-                                "code_colonne": code_colonne,
-                                "marque": marque,
-                                "code_usp": code_usp,
-                                "numero_serie": numero_serie,
-                                "longueur_mm": longueur,
-                                "diametre_interne": diam_int,
-                                "diametre_grains": diam_grains,
-                                "photo_url": photo_url if photo_url else None,
-                                "commentaire": commentaire if commentaire else None,
-                                "types_analyse": types_analyse if types_analyse else None,
-                                "statut": "active"
-                            })
+                        r = supabase.table("colonnes").insert({
+                            "code_colonne": code_colonne,
+                            "marque": marque,
+                            "code_usp": code_usp,
+                            "numero_serie": numero_serie,
+                            "longueur_mm": longueur,
+                            "diametre_interne": diam_int,
+                            "diametre_grains": diam_grains,
+                            "photo_url": photo_url if photo_url else None,
+                            "commentaire": commentaire if commentaire else None,
+                            "types_analyse": types_analyse if types_analyse else None,
+                            "statut": "active"
+                        })
+                        if r.status_code in [200, 201]:
                             st.success(f"✅ Colonne {code_colonne} ajoutée !")
-                        except Exception as e:
-                            st.error(f"Erreur: {e}")
+                        else:
+                            st.error(f"Erreur {r.status_code} : {r.text}")
                     else:
                         st.warning("Les champs Code Colonne, Marque et N° série sont obligatoires")
 
         st.subheader("📊 Liste des colonnes")
         try:
-            data = supabase.table("colonnes").select("*").data
-            if data:
+            data = supabase.table("colonnes").data
+            if isinstance(data, list) and data:
                 st.dataframe(pd.DataFrame(data), use_container_width=True)
             else:
-                st.info("Aucune colonne")
+                st.info("Aucune colonne enregistrée")
         except Exception as e:
             st.error(f"Erreur: {e}")
 
