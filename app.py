@@ -1,28 +1,47 @@
 import streamlit as st
 import os
-from supabase import create_client
+import requests as req
 from dotenv import load_dotenv
 import pandas as pd
-from datetime import date
-import requests 
 
 load_dotenv()
-url = os.getenv("SUPABASE_URL")
-key = os.getenv("SUPABASE_KEY")
-st.write(f"URL: {repr(url)}")
-st.write(f"KEY: {repr(key[:20]) if key else None}") 
 
-try:
-    r = requests.get(url, timeout=5)
-    st.write(f"Connexion OK : {r.status_code}")
-except Exception as e:
-    st.write(f"Connexion échouée : {e}")
 st.set_page_config(page_title="Labo Q - Gestion Colonnes HPLC", page_icon="🧪", layout="wide")
 
-supabase = create_client(
-    os.getenv("SUPABASE_URL"),
-    os.getenv("SUPABASE_KEY")
-)
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+
+HEADERS = {
+    "apikey": SUPABASE_KEY,
+    "Authorization": f"Bearer {SUPABASE_KEY}",
+    "Content-Type": "application/json",
+    "Prefer": "return=representation"
+}
+
+class TableQuery:
+    def __init__(self, table_name):
+        self.table_name = table_name
+
+    def select(self, cols="*"):
+        r = req.get(
+            f"{SUPABASE_URL}/rest/v1/{self.table_name}?select={cols}",
+            headers=HEADERS
+        )
+        return type('R', (), {'data': r.json() if r.ok else []})()
+
+    def insert(self, data):
+        r = req.post(
+            f"{SUPABASE_URL}/rest/v1/{self.table_name}",
+            headers=HEADERS,
+            json=data
+        )
+        return type('R', (), {'data': r.json()})()
+
+class SupabaseClient:
+    def table(self, table_name):
+        return TableQuery(table_name)
+
+supabase = SupabaseClient()
 
 if 'authenticated' not in st.session_state:
     st.session_state.authenticated = False
@@ -35,7 +54,7 @@ with st.sidebar:
         email = st.text_input("Email")
         password = st.text_input("Mot de passe", type="password")
         if st.button("Se connecter"):
-            if email == "admin@labo.com" and password == "Admin123!":
+            if email == os.getenv("ADMIN_EMAIL", "admin@labo.com") and password == os.getenv("ADMIN_PASSWORD", "Admin123!"):
                 st.session_state.authenticated = True
                 st.rerun()
             else:
@@ -48,12 +67,12 @@ with st.sidebar:
 
 if st.session_state.authenticated:
     menu = st.sidebar.radio("Navigation", ["📊 Dashboard", "📋 Gestion des Colonnes", "🔍 Recherche"])
-    
+
     if menu == "📊 Dashboard":
         st.header("📊 Dashboard")
         try:
-            colonnes = supabase.table("colonnes").select("*").execute().data
-            analyses = supabase.table("analyses").select("*").execute().data
+            colonnes = supabase.table("colonnes").select("*").data
+            analyses = supabase.table("analyses").select("*").data
             col1, col2, col3 = st.columns(3)
             with col1:
                 st.metric("🔬 Colonnes", len(colonnes))
@@ -64,32 +83,32 @@ if st.session_state.authenticated:
                 st.metric("✅ Actives", actives)
         except:
             st.info("Ajoutez des données")
-    
+
     elif menu == "📋 Gestion des Colonnes":
         st.header("📋 Gestion des Colonnes")
-        
+
         with st.expander("➕ Ajouter une colonne", expanded=True):
             with st.form("add_form"):
                 col1, col2 = st.columns(2)
-                
+
                 with col1:
                     code_colonne = st.text_input("Code Colonne*")
                     marque = st.text_input("Marque*")
                     code_usp = st.selectbox("Code USP*", ["L1 (C18)", "L7 (C8)", "L11 (Phényle)", "L14 (Silice)", "L20 (Diol)", "Autre"])
                     numero_serie = st.text_input("Numéro de série*")
                     longueur = st.number_input("Longueur (mm)", min_value=10, max_value=500, value=250)
-                
+
                 with col2:
                     diam_int = st.number_input("Diamètre interne (mm)", min_value=1.0, max_value=50.0, value=4.6, step=0.1)
                     diam_grains = st.number_input("Diamètre grains (µm)", min_value=0.5, max_value=10.0, value=3.5, step=0.1)
                     photo_url = st.text_input("URL de la photo (optionnel)", placeholder="https://exemple.com/photo.jpg")
                     commentaire = st.text_area("Commentaire (optionnel)", placeholder="Informations supplémentaires")
-                    types_analyse = st.multiselect("Types d'analyse associés", 
+                    types_analyse = st.multiselect("Types d'analyse associés",
                         ["Dosage", "Dos des Substance apparentés", "Uniformité de Teneur", "Identification", "Dissolution"])
-                
+
                 if photo_url:
                     st.image(photo_url, width=150, caption="Aperçu")
-                
+
                 if st.form_submit_button("💾 Enregistrer"):
                     if code_colonne and marque and numero_serie:
                         try:
@@ -105,24 +124,24 @@ if st.session_state.authenticated:
                                 "commentaire": commentaire if commentaire else None,
                                 "types_analyse": types_analyse if types_analyse else None,
                                 "statut": "active"
-                            }).execute()
+                            })
                             st.success(f"✅ Colonne {code_colonne} ajoutée !")
                             st.rerun()
                         except Exception as e:
                             st.error(f"Erreur: {e}")
                     else:
                         st.warning("Les champs Code Colonne, Marque et N° série sont obligatoires")
-        
+
         st.subheader("📊 Liste des colonnes")
         try:
-            data = supabase.table("colonnes").select("*").execute().data
+            data = supabase.table("colonnes").select("*").data
             if data:
                 st.dataframe(pd.DataFrame(data), use_container_width=True)
             else:
                 st.info("Aucune colonne")
         except Exception as e:
             st.error(f"Erreur: {e}")
-    
+
     elif menu == "🔍 Recherche":
         from pages.recherche import show_recherche
         show_recherche(supabase)
